@@ -1,0 +1,9 @@
+# Project exclude paths
+/relay/contract/target/
+/test/node_modules
+/test/accounts
+.env
+.idea
+/relay/tests/target/
+/sample/contract/target/
+/deposit/contract/target/
