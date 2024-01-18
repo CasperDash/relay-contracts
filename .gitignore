@@ -2,7 +2,7 @@
 /relay/contract/target/
 /test/node_modules
 /test/accounts
-.env
+.env*
 .idea
 /relay/tests/target/
 /sample/contract/target/

@@ -58,6 +58,7 @@ pub extern "C" fn init() {
 #[no_mangle]
 pub extern "C" fn call_on_behalf() {
     permission::require(Permission::Installer);
+    let paymaster = runtime::get_caller();
 
     let contract_hash: ContractHash = runtime::get_named_arg(constants::ARG_CONTRACT);
     let entry_point: String = runtime::get_named_arg(constants::ARG_ENTRY_POINT);
@@ -89,8 +90,8 @@ pub extern "C" fn call_on_behalf() {
 
     let _ = system::transfer_from_purse_to_account(
         utils::get_uref(constants::KEY_DEPOSIT_PURSE),
-        caller,
-        fee,
+        paymaster,
+        gas_amount,
         None,
     );
     if fee > U512::zero() {
