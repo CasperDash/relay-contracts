@@ -47,7 +47,7 @@ async function setup() {
     RuntimeArgs.fromMap({
       "name": CLValueBuilder.string("relay"),
     }),
-    String(100 * MOTE_RATE),
+    String(120 * MOTE_RATE),
     FAUCET_KEYS.publicKey,
     process.env.NETWORK_NAME!,
     [FAUCET_KEYS]
@@ -61,12 +61,16 @@ async function setup() {
     accountInfo,
     "relay_hash");
   console.log("Relay contract hash: ", relayContractHash)
+  const relayContractPackageHash = await getAccountNamedKeyValue(
+    accountInfo,
+    "relay_package_name");
+  console.log("Relay contract package hash: ", relayContractPackageHash)
 
   console.log("*** Deploy sample ***")
   const sampleDeploy = contractClient.install(
     getBinary('./contracts/sample.wasm'),
     RuntimeArgs.fromMap({
-      "relay_contract": CLValueBuilder.byteArray(Contracts.contractHashToByteArray(relayContractHash.slice(5))),
+      "relay_contract_package": CLValueBuilder.byteArray(Contracts.contractHashToByteArray(relayContractPackageHash.slice(5))),
     }),
     String(100 * MOTE_RATE),
     FAUCET_KEYS.publicKey,
@@ -95,10 +99,10 @@ async function setup() {
   await getDeploy(process.env.NODE_URL!, registerHash);
 
   console.log("*** Set fee (%) ***");
-  await delay(500);
   const setFeeRateDeploy = contractClient.callEntrypoint("set_fee_rate", RuntimeArgs.fromMap({
     "fee_rate": CLValueBuilder.u32(20), // 2.0%
   }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10*MOTE_RATE), [FAUCET_KEYS]);
+  await delay(500);
   const setFeeRateHash = await setFeeRateDeploy.send(process.env.NODE_URL!);
   await getDeploy(process.env.NODE_URL!, setFeeRateHash);
 }
