@@ -17,7 +17,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_types::account::AccountHash;
 use casper_types::contracts::NamedKeys;
 use casper_types::{
-    CLType, ContractHash, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Parameter,
+    CLType, ContractPackageHash, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints,
+    Parameter,
 };
 
 #[no_mangle]
@@ -30,15 +31,16 @@ pub extern "C" fn set_message() {
 
 #[no_mangle]
 pub extern "C" fn call() {
-    let relay_contract: ContractHash = runtime::get_named_arg(constants::KEY_RELAY_CONTRACT);
+    let relay_contract_package: ContractPackageHash =
+        runtime::get_named_arg(constants::KEY_RELAY_CONTRACT_PACKAGE);
     let mut named_keys = NamedKeys::new();
     named_keys.insert(
         constants::KEY_MESSAGE.to_string(),
         storage::new_uref(String::new()).into(),
     );
     named_keys.insert(
-        constants::KEY_RELAY_CONTRACT.to_string(),
-        storage::new_uref(relay_contract).into(),
+        constants::KEY_RELAY_CONTRACT_PACKAGE.to_string(),
+        storage::new_uref(relay_contract_package).into(),
     );
     named_keys.insert(
         constants::KEY_CALLER.to_string(),

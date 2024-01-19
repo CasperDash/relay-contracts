@@ -5,7 +5,7 @@ use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
 use casper_types::account::AccountHash;
 use casper_types::bytesrepr::{FromBytes, ToBytes};
 use casper_types::system::CallStackElement;
-use casper_types::{ApiError, CLTyped, ContractHash, URef};
+use casper_types::{ApiError, CLTyped, ContractPackageHash, URef};
 
 #[inline]
 pub(crate) fn get_uref(key: &str) -> URef {
@@ -35,9 +35,14 @@ pub(crate) fn get_caller() -> AccountHash {
         .to_owned()
         .unwrap_or_revert()
     {
-        CallStackElement::StoredContract { contract_hash, .. } => {
-            // Check if contract hash is relay contract
-            if contract_hash == get_storage::<ContractHash>(constants::KEY_RELAY_CONTRACT) {
+        CallStackElement::StoredContract {
+            contract_package_hash,
+            ..
+        } => {
+            // Check if called from relay contract
+            if contract_package_hash
+                == get_storage::<ContractPackageHash>(constants::KEY_RELAY_CONTRACT_PACKAGE)
+            {
                 return runtime::get_named_arg::<AccountHash>(constants::ARG_CALLER);
             }
             runtime::get_caller()
