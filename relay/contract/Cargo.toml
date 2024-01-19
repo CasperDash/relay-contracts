@@ -6,6 +6,7 @@ edition = "2018"
 [dependencies]
 casper-contract = "4.0.0"
 casper-types = "4.0.1"
+casper-event-standard = "0.4.1"
 
 [[bin]]
 name = "relay"

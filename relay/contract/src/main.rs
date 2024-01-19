@@ -10,10 +10,12 @@ extern crate alloc;
 
 mod constants;
 mod errors;
+mod events;
 mod permission;
 mod utils;
 
 use crate::errors::Error;
+use crate::events::{CallOnBehalf, Deposit, Register};
 use crate::permission::Permission;
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
@@ -22,6 +24,7 @@ use alloc::vec::Vec;
 use casper_contract::contract_api::system;
 use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
+use casper_event_standard::Schemas;
 use casper_types::account::AccountHash;
 use casper_types::contracts::NamedKeys;
 use casper_types::{
@@ -41,6 +44,14 @@ pub extern "C" fn call() {
     }
 }
 
+fn init_events() {
+    let schemas = Schemas::new()
+        .with::<Register>()
+        .with::<Deposit>()
+        .with::<CallOnBehalf>();
+    casper_event_standard::init(schemas);
+}
+
 #[no_mangle]
 pub extern "C" fn init() {
     let installer = utils::get_storage::<AccountHash>(constants::KEY_INSTALLER);
@@ -53,6 +64,8 @@ pub extern "C" fn init() {
     runtime::put_key(constants::KEY_PURSE, system::create_purse().into());
     runtime::put_key(constants::KEY_DEPOSIT_PURSE, system::create_purse().into());
     runtime::put_key(constants::KEY_FEE_PURSE, system::create_purse().into());
+
+    init_events();
 }
 
 #[no_mangle]
@@ -124,6 +137,14 @@ pub extern "C" fn call_on_behalf() {
         .unwrap_or_revert_with(ApiError::InvalidArgument);
 
     let _: () = runtime::call_contract(contract_hash, entry_point.as_str(), args);
+
+    casper_event_standard::emit(events::CallOnBehalf::new(
+        contract_hash,
+        owner,
+        caller,
+        entry_point,
+        gas_amount,
+    ));
 }
 
 #[no_mangle]
@@ -148,6 +169,8 @@ pub extern "C" fn register() {
         contract_hash.to_string().as_str(),
         owner,
     );
+
+    casper_event_standard::emit(events::Register::new(contract_hash, owner));
 }
 
 #[no_mangle]
@@ -208,6 +231,8 @@ pub extern "C" fn deposit() {
         owner.to_string().as_str(),
         owner_balance + purse_balance,
     );
+
+    casper_event_standard::emit(events::Deposit::new(owner, purse_balance));
 }
 
 fn install_contract() {
