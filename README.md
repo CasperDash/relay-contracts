@@ -25,7 +25,7 @@ Session contract (WASM) to deposit CSPR to pay for gas
 - `amount`: amount of CSPR to deposit
 
 ## test
-E2E test for CBRC20 Marketplace
+E2E test for relay contract
 
 #### Setup
 - Create a `.env` file for network configuration
