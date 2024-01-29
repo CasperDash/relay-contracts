@@ -1,7 +1,9 @@
 # Relay contract
 
 ## relay
-Main contract for relay
+Main contract for relay 
+>Testnet address: `6112c4d26e0b91bc2cb838cde4da41e9fc706b98d60225ce2070ca4eb9d69fbf`
+
 #### *Entrypoint* call_on_behalf
 Call a contract on behalf of a user
 - `contract`: recipient contract hash
@@ -17,7 +19,8 @@ Register a contract to be able to call from relay
 - `owner`: contract owner
 
 ## sample
-Sample contract to test relay
+Sample contract to test relay 
+>Testnet address: `2f17ce27d18c5aa1129e9cf6a3f7cb9680ff0703bc6d9751a079c49c482b638a`
 
 ## deposit
 Session contract (WASM) to deposit CSPR to pay for gas
