@@ -6,6 +6,7 @@ import {
 } from "casper-js-sdk";
 import {getAccountInfo, getAccountNamedKeyValue, getBinary, getDeploy} from "./utils";
 import {strict as assert} from 'assert';
+import {CEP18Client, ContractWASM} from "casper-cep18-js-client";
 
 const {Contract} = Contracts;
 const MOTE_RATE = 1_000_000_000;
@@ -32,11 +33,32 @@ const USER2_KEYS = Keys.Ed25519.parseKeyFiles(
 (async () => {
   await setup();
   await deposit();
+  await increaseAllowance();
   await testRelay();
   await testDirect();
 })();
 
 async function setup() {
+  // Install CEP18 contract
+  console.log("*** Deploy cep18 contract ***")
+  const cep18 = new CEP18Client(process.env.NODE_URL!, process.env.NETWORK_NAME!);
+  const cep18Deploy = cep18.install(
+    ContractWASM, // Contract wasm
+    {
+      name: 'USDT',
+      symbol: 'USDT',
+      decimals: 9,
+      totalSupply: 50_000_000_000
+    },
+    150_000_000_000, // Payment Amount
+    FAUCET_KEYS.publicKey,
+    process.env.CHAIN_NAME!,
+    [FAUCET_KEYS]
+  );
+  await delay(500);
+  const cep18DeployHash = await cep18Deploy.send(process.env.NODE_URL!);
+  await getDeploy(process.env.NODE_URL!, cep18DeployHash);
+
   // Install sample endpoint contract
   const casperClient = new CasperClient(process.env.NODE_URL!)
   const contractClient = new Contract(casperClient);
@@ -47,7 +69,7 @@ async function setup() {
     RuntimeArgs.fromMap({
       "name": CLValueBuilder.string("relay"),
     }),
-    String(120 * MOTE_RATE),
+    String(150 * MOTE_RATE),
     FAUCET_KEYS.publicKey,
     process.env.NETWORK_NAME!,
     [FAUCET_KEYS]
@@ -78,8 +100,8 @@ async function setup() {
     [FAUCET_KEYS]
   )
   await delay(500);
-  const brokerHash = await sampleDeploy.send(process.env.NODE_URL!);
-  await getDeploy(process.env.NODE_URL!, brokerHash);
+  const sampleDeployHash = await sampleDeploy.send(process.env.NODE_URL!);
+  await getDeploy(process.env.NODE_URL!, sampleDeployHash);
 
   accountInfo = await getAccountInfo(process.env.NODE_URL!, FAUCET_KEYS.publicKey);
   const sampleHash = await getAccountNamedKeyValue(
@@ -105,6 +127,17 @@ async function setup() {
   await delay(500);
   const setFeeRateHash = await setFeeRateDeploy.send(process.env.NODE_URL!);
   await getDeploy(process.env.NODE_URL!, setFeeRateHash);
+
+  const cep18ContractHash = await getAccountNamedKeyValue(accountInfo, "cep18_contract_hash_USDT");
+  cep18.setContractHash(cep18ContractHash);
+  console.log("*** Transfer USDT to sample contract owner ***")
+  const transferDeploy = cep18.transfer({
+    recipient: USER1_KEYS.publicKey, amount: 10_000_000_000
+  }, 5_000_000_000, FAUCET_KEYS.publicKey, process.env.CHAIN_NAME!, [FAUCET_KEYS])
+
+  await delay(500);
+  const transferDeployHash = await transferDeploy.send(process.env.NODE_URL!);
+  await getDeploy(process.env.NODE_URL!, transferDeployHash);
 }
 
 async function deposit() {
@@ -132,6 +165,32 @@ async function deposit() {
   // Check balance
   const balanceAfter = await contractClient.queryContractDictionary("owner_balance", USER1_KEYS.publicKey.toAccountRawHashStr());
   console.log("Balance after: ", balanceAfter.toJSON())
+}
+
+async function increaseAllowance() {
+  const accountInfo = await getAccountInfo(process.env.NODE_URL!, FAUCET_KEYS.publicKey);
+  const relayContractHash = await getAccountNamedKeyValue(
+    accountInfo,
+    "relay_hash");
+  console.log("Relay contract hash: ", relayContractHash)
+  const relayContractPackageHash = await getAccountNamedKeyValue(
+    accountInfo,
+    "relay_package_name");
+  const cep18Hash = await getAccountNamedKeyValue(accountInfo, "cep18_contract_hash_USDT");
+  const cep18 = new CEP18Client(process.env.NODE_URL!, process.env.CHAIN_NAME!);
+  cep18.setContractHash(cep18Hash);
+
+  const spender= CLValueBuilder.byteArray(Contracts.contractHashToByteArray(relayContractPackageHash.slice(5)));
+
+  const increaseAllowanceDeploy = cep18.increaseAllowance({
+    spender: spender, amount: 10_000_000_000
+  }, 5_000_000_000, USER1_KEYS.publicKey, process.env.NETWORK_NAME!, [USER1_KEYS])
+
+  await delay(500);
+  const increaseAllowanceDeployHash = await increaseAllowanceDeploy.send(process.env.NODE_URL!);
+  await getDeploy(process.env.NODE_URL!, increaseAllowanceDeployHash);
+  const allowance = await cep18.allowances(USER1_KEYS.publicKey, spender);
+  console.log(`Allowance: ${allowance.toString()}`)
 }
 
 async function testRelay() {
@@ -168,6 +227,34 @@ async function testRelay() {
   assert.equal(caller, USER1_KEYS.publicKey.toAccountRawHashStr());
   const feePurseBalance = await getFeePurseBalance(casperClient, relayContractHash);
   console.log("Fee purse balance: ", feePurseBalance.div(MOTE_RATE/100).toNumber()/100);
+
+
+  const cep18Hash = await getAccountNamedKeyValue(accountInfo, "cep18_contract_hash_USDT");
+  const cep18 = new CEP18Client(process.env.NODE_URL!, process.env.CHAIN_NAME!);
+  cep18.setContractHash(cep18Hash);
+  contractClient.setContractHash(relayContractHash)
+
+  const cep18BalanceBefore = await cep18.balanceOf(FAUCET_KEYS.publicKey);
+  console.log("CEP18 balance before: ", cep18BalanceBefore.toString());
+  const setMessageCep18Deploy = contractClient.callEntrypoint("call_on_behalf", RuntimeArgs.fromMap({
+    "contract": CLValueBuilder.byteArray(Contracts.contractHashToByteArray(sampleContractHash.slice(5))),
+    "entry_point": CLValueBuilder.string("set_message"),
+    "caller": CLValueBuilder.byteArray(USER1_KEYS.publicKey.toAccountHash()),
+    "gas_amount": CLValueBuilder.u512(MOTE_RATE),
+    "pay_amount": CLValueBuilder.u512(0),
+    "cep18_hash": CLValueBuilder.byteArray(Contracts.contractHashToByteArray(cep18Hash.slice(5))),
+    "args": CLValueBuilder.byteArray(RuntimeArgs.fromMap({
+      message: CLValueBuilder.string("Hello from relay")
+    }).toBytes().unwrap())
+  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10*MOTE_RATE), [FAUCET_KEYS]);
+
+  console.log('*** Set message through relay ***');
+  await delay(500);
+  const setMessageCep18Hash = await setMessageCep18Deploy.send(process.env.NODE_URL!);
+  await getDeploy(process.env.NODE_URL!, setMessageCep18Hash);
+
+  const cep18BalanceAfter = await cep18.balanceOf(FAUCET_KEYS.publicKey);
+  console.log("CEP18 balance after: ", cep18BalanceAfter.toString());
 }
 
 async function testDirect() {
