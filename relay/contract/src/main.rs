@@ -178,6 +178,7 @@ pub extern "C" fn call_on_behalf() {
         caller,
         entry_point,
         gas_amount,
+        cep18_hash,
     ));
 }
 

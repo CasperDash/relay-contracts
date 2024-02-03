@@ -1,7 +1,6 @@
 use alloc::borrow::ToOwned;
 use casper_contract::contract_api::storage;
 use casper_contract::{contract_api::runtime, ext_ffi, unwrap_or_revert::UnwrapOrRevert};
-use casper_types::account::AccountHash;
 use casper_types::bytesrepr::{FromBytes, ToBytes};
 use casper_types::system::CallStackElement;
 use casper_types::{api_error, ApiError, CLTyped, ContractPackageHash, URef};
