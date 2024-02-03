@@ -767,6 +767,7 @@ dependencies = [
  "casper-contract 4.0.0",
  "casper-event-standard",
  "casper-types 4.0.1",
+ "num-traits",
 ]
 
 [[package]]
