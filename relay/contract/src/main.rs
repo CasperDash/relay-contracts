@@ -29,8 +29,9 @@ use casper_types::account::AccountHash;
 use casper_types::contracts::NamedKeys;
 use casper_types::{
     runtime_args, ApiError, CLType, CLTyped, CLValue, ContractHash, EntryPoint, EntryPointAccess,
-    EntryPointType, EntryPoints, Parameter, RuntimeArgs, URef, U512,
+    EntryPointType, EntryPoints, Key, Parameter, RuntimeArgs, URef, U256, U512,
 };
+use num_traits::AsPrimitive;
 
 #[no_mangle]
 pub extern "C" fn call() {
@@ -78,6 +79,7 @@ pub extern "C" fn call_on_behalf() {
     let caller: AccountHash = runtime::get_named_arg(constants::ARG_CALLER);
     let gas_amount: U512 = runtime::get_named_arg(constants::ARG_GAS_AMOUNT);
     let pay_amount: U512 = runtime::get_named_arg(constants::ARG_PAY_AMOUNT);
+    let cep18_hash = utils::get_optional_named_arg::<ContractHash>(constants::ARG_CEP18_HASH);
 
     // Check if recipient contract is registered
     let owner = utils::get_storage_dic::<AccountHash>(
@@ -86,41 +88,73 @@ pub extern "C" fn call_on_behalf() {
     )
     .unwrap_or_revert_with(ApiError::from(Error::Unregistered));
 
-    let owner_balance = utils::get_storage_dic::<U512>(
-        utils::get_uref(constants::KEY_OWNER_BALANCE),
-        owner.to_string().as_str(),
-    )
-    .unwrap();
     let fee_rate = utils::get_storage::<u32>(constants::KEY_FEE_RATE);
     let fee = gas_amount
         .checked_mul(U512::from(fee_rate))
         .unwrap_or_revert()
         .checked_div(U512::from(1000))
         .unwrap_or_revert();
-    if owner_balance < gas_amount + fee {
-        runtime::revert(ApiError::from(Error::InsufficientBalance))
-    }
 
-    let _ = system::transfer_from_purse_to_account(
-        utils::get_uref(constants::KEY_DEPOSIT_PURSE),
-        paymaster,
-        gas_amount,
-        None,
-    );
-    if fee > U512::zero() {
-        let _ = system::transfer_from_purse_to_purse(
-            utils::get_uref(constants::KEY_DEPOSIT_PURSE),
-            utils::get_uref(constants::KEY_FEE_PURSE),
-            fee,
-            None,
-        );
-    }
+    match cep18_hash {
+        Some(cep18_hash) => {
+            // Pay gas fee in CEP18
+            let contract_package = utils::get_contract_package().unwrap_or_revert();
+            let allowance: U256 = runtime::call_contract(
+                cep18_hash,
+                constants::ENTRY_POINT_ALLOWANCE,
+                runtime_args! {
+                    constants::ARG_OWNER => Key::from(owner),
+                    constants::ARG_SPENDER => Key::from(contract_package),
+                },
+            );
+            let allowance: U512 = allowance.as_();
+            if allowance < gas_amount + fee {
+                runtime::revert(ApiError::from(Error::InsufficientBalance))
+            }
 
-    utils::write_storage_dic(
-        utils::get_uref(constants::KEY_OWNER_BALANCE),
-        owner.to_string().as_str(),
-        owner_balance - gas_amount - fee,
-    );
+            let _: () = runtime::call_contract(
+                cep18_hash,
+                constants::ENTRY_POINT_TRANSFER_FROM,
+                runtime_args! {
+                    constants::ARG_OWNER => Key::from(owner),
+                    constants::ARG_RECIPIENT => Key::from(paymaster),
+                    constants::ARG_AMOUNT => gas_amount,
+                },
+            );
+        }
+        None => {
+            // Pay gas fee in CSPR
+            let owner_balance = utils::get_storage_dic::<U512>(
+                utils::get_uref(constants::KEY_OWNER_BALANCE),
+                owner.to_string().as_str(),
+            )
+            .unwrap();
+
+            if owner_balance < gas_amount + fee {
+                runtime::revert(ApiError::from(Error::InsufficientBalance))
+            }
+
+            let _ = system::transfer_from_purse_to_account(
+                utils::get_uref(constants::KEY_DEPOSIT_PURSE),
+                paymaster,
+                gas_amount,
+                None,
+            );
+            if fee > U512::zero() {
+                let _ = system::transfer_from_purse_to_purse(
+                    utils::get_uref(constants::KEY_DEPOSIT_PURSE),
+                    utils::get_uref(constants::KEY_FEE_PURSE),
+                    fee,
+                    None,
+                );
+            }
+            utils::write_storage_dic(
+                utils::get_uref(constants::KEY_OWNER_BALANCE),
+                owner.to_string().as_str(),
+                owner_balance - gas_amount - fee,
+            );
+        }
+    }
 
     if pay_amount > U512::zero() {
         let purse = utils::get_uref(constants::KEY_PURSE);
@@ -138,12 +172,13 @@ pub extern "C" fn call_on_behalf() {
 
     let _: () = runtime::call_contract(contract_hash, entry_point.as_str(), args);
 
-    casper_event_standard::emit(events::CallOnBehalf::new(
+    casper_event_standard::emit(CallOnBehalf::new(
         contract_hash,
         owner,
         caller,
         entry_point,
         gas_amount,
+        cep18_hash,
     ));
 }
 
@@ -170,7 +205,7 @@ pub extern "C" fn register() {
         owner,
     );
 
-    casper_event_standard::emit(events::Register::new(contract_hash, owner));
+    casper_event_standard::emit(Register::new(contract_hash, owner));
 }
 
 #[no_mangle]
@@ -232,7 +267,7 @@ pub extern "C" fn deposit() {
         owner_balance + purse_balance,
     );
 
-    casper_event_standard::emit(events::Deposit::new(owner, purse_balance));
+    casper_event_standard::emit(Deposit::new(owner, purse_balance));
 }
 
 fn install_contract() {
@@ -332,9 +367,16 @@ fn load_entry_points(entry_points: &mut EntryPoints) {
     entry_points.add_entry_point(EntryPoint::new(
         constants::ENTRY_POINT_CALL_ON_BEHALF,
         vec![
+            Parameter::new(constants::ARG_CONTRACT, ContractHash::cl_type()),
             Parameter::new(constants::ARG_ENTRY_POINT, CLType::String),
             Parameter::new(constants::ARG_CALLER, CLType::Key),
+            Parameter::new(constants::ARG_GAS_AMOUNT, CLType::U512),
+            Parameter::new(constants::ARG_PAY_AMOUNT, CLType::U512),
             Parameter::new(constants::ARG_ARGS, CLType::List(Box::new(CLType::Any))),
+            Parameter::new(
+                constants::ARG_CEP18_HASH,
+                CLType::Option(Box::new(ContractHash::cl_type())),
+            ),
         ],
         CLType::Unit,
         EntryPointAccess::Public,

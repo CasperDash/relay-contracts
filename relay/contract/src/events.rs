@@ -22,6 +22,7 @@ pub struct CallOnBehalf {
     caller: String,
     entry_point: String,
     gas_amount: String,
+    cep18_hash: Option<String>,
 }
 
 impl Register {
@@ -49,6 +50,7 @@ impl CallOnBehalf {
         caller: AccountHash,
         entry_point: String,
         gas_amount: U512,
+        cep18_hash: Option<ContractHash>,
     ) -> Self {
         CallOnBehalf {
             contract_hash: contract_hash.to_formatted_string(),
@@ -56,6 +58,7 @@ impl CallOnBehalf {
             caller: caller.to_formatted_string(),
             entry_point,
             gas_amount: gas_amount.to_string(),
+            cep18_hash: cep18_hash.map(|hash| hash.to_formatted_string()),
         }
     }
 }
