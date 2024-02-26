@@ -123,12 +123,13 @@ async function setup() {
   console.log("*** Set fee (%) ***");
   const setFeeRateDeploy = contractClient.callEntrypoint("set_fee_rate", RuntimeArgs.fromMap({
     "fee_rate": CLValueBuilder.u32(20), // 2.0%
-  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10*MOTE_RATE), [FAUCET_KEYS]);
+  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10 * MOTE_RATE), [FAUCET_KEYS]);
   await delay(500);
   const setFeeRateHash = await setFeeRateDeploy.send(process.env.NODE_URL!);
   await getDeploy(process.env.NODE_URL!, setFeeRateHash);
 
   const cep18ContractHash = await getAccountNamedKeyValue(accountInfo, "cep18_contract_hash_USDT");
+  console.log("CEP18 contract hash: ", cep18ContractHash)
   cep18.setContractHash(cep18ContractHash);
   console.log("*** Transfer USDT to sample contract owner ***")
   const transferDeploy = cep18.transfer({
@@ -152,8 +153,8 @@ async function deposit() {
   const depositDeploy = contractClient.install(getBinary('./contracts/deposit.wasm'), RuntimeArgs.fromMap({
     "relay_contract": CLValueBuilder.byteArray(Contracts.contractHashToByteArray(relayContractHash.slice(5))),
     "owner": CLValueBuilder.byteArray(USER1_KEYS.publicKey.toAccountHash()),
-    "amount": CLValueBuilder.u512(100*MOTE_RATE),
-  }), String(10*MOTE_RATE), USER1_KEYS.publicKey, process.env.NETWORK_NAME!, [USER1_KEYS])
+    "amount": CLValueBuilder.u512(100 * MOTE_RATE),
+  }), String(10 * MOTE_RATE), USER1_KEYS.publicKey, process.env.NETWORK_NAME!, [USER1_KEYS])
 
   const balanceBefore = await contractClient.queryContractDictionary("owner_balance", USER1_KEYS.publicKey.toAccountRawHashStr());
   console.log("Balance before: ", balanceBefore.toJSON())
@@ -180,7 +181,7 @@ async function increaseAllowance() {
   const cep18 = new CEP18Client(process.env.NODE_URL!, process.env.CHAIN_NAME!);
   cep18.setContractHash(cep18Hash);
 
-  const spender= CLValueBuilder.byteArray(Contracts.contractHashToByteArray(relayContractPackageHash.slice(5)));
+  const spender = CLValueBuilder.byteArray(Contracts.contractHashToByteArray(relayContractPackageHash.slice(5)));
 
   const increaseAllowanceDeploy = cep18.increaseAllowance({
     spender: spender, amount: 10_000_000_000
@@ -210,12 +211,12 @@ async function testRelay() {
     "contract": CLValueBuilder.byteArray(Contracts.contractHashToByteArray(sampleContractHash.slice(5))),
     "entry_point": CLValueBuilder.string("set_message"),
     "caller": CLValueBuilder.byteArray(USER1_KEYS.publicKey.toAccountHash()),
-    "gas_amount": CLValueBuilder.u512(10*MOTE_RATE),
+    "gas_amount": CLValueBuilder.u512(10 * MOTE_RATE),
     "pay_amount": CLValueBuilder.u512(0),
     "args": CLValueBuilder.byteArray(RuntimeArgs.fromMap({
       message: CLValueBuilder.string("Hello from relay")
     }).toBytes().unwrap())
-  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10*MOTE_RATE), [FAUCET_KEYS]);
+  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10 * MOTE_RATE), [FAUCET_KEYS]);
 
   console.log('*** Set message through relay ***');
   await delay(500);
@@ -226,7 +227,7 @@ async function testRelay() {
   const caller = await contractClient.queryContractData(["caller"]);
   assert.equal(caller, USER1_KEYS.publicKey.toAccountRawHashStr());
   const feePurseBalance = await getFeePurseBalance(casperClient, relayContractHash);
-  console.log("Fee purse balance: ", feePurseBalance.div(MOTE_RATE/100).toNumber()/100);
+  console.log("Fee purse balance: ", feePurseBalance.div(MOTE_RATE / 100).toNumber() / 100);
 
 
   const cep18Hash = await getAccountNamedKeyValue(accountInfo, "cep18_contract_hash_USDT");
@@ -246,7 +247,7 @@ async function testRelay() {
     "args": CLValueBuilder.byteArray(RuntimeArgs.fromMap({
       message: CLValueBuilder.string("Hello from relay")
     }).toBytes().unwrap())
-  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10*MOTE_RATE), [FAUCET_KEYS]);
+  }), FAUCET_KEYS.publicKey, process.env.NETWORK_NAME!, String(10 * MOTE_RATE), [FAUCET_KEYS]);
 
   console.log('*** Set message through relay ***');
   await delay(500);
@@ -269,7 +270,7 @@ async function testDirect() {
   contractClient.setContractHash(sampleContractHash)
   const setMessageDeploy = contractClient.callEntrypoint("set_message", RuntimeArgs.fromMap({
     "message": CLValueBuilder.string("Hello directly"),
-  }), USER2_KEYS.publicKey, process.env.NETWORK_NAME!, String(10*MOTE_RATE), [USER2_KEYS]);
+  }), USER2_KEYS.publicKey, process.env.NETWORK_NAME!, String(10 * MOTE_RATE), [USER2_KEYS]);
 
   console.log('*** Set message directly ***');
   await delay(500);
