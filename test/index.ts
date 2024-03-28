@@ -13,8 +13,8 @@ function delay(time: number) {
 }
 
 const ADMIN_KEYS = Keys.Ed25519.parseKeyFiles(
-  `./accounts/faucet/public_key.pem`,
-  `./accounts/faucet/secret_key.pem`
+  `./accounts/admin/public_key.pem`,
+  `./accounts/admin/secret_key.pem`
 );
 
 (async () => {
