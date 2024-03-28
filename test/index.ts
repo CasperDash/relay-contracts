@@ -12,10 +12,7 @@ function delay(time: number) {
   return new Promise(resolve => setTimeout(resolve, time));
 }
 
-const ADMIN_KEYS = Keys.Ed25519.parseKeyFiles(
-  `./accounts/admin/public_key.pem`,
-  `./accounts/admin/secret_key.pem`
-);
+const ADMIN_KEYS = Keys.Ed25519.loadKeyPairFromPrivateFile(process.env.ADMIN_PRIVATE_KEY!);
 
 (async () => {
   await setup();
