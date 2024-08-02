@@ -184,6 +184,8 @@ pub extern "C" fn call_on_behalf() {
 
 #[no_mangle]
 pub extern "C" fn register() {
+    permission::require(Permission::Installer);
+
     let owner: AccountHash = runtime::get_named_arg(constants::ARG_OWNER);
     let owner_balance = utils::get_storage_dic::<U512>(
         utils::get_uref(constants::KEY_OWNER_BALANCE),
