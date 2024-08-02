@@ -34,13 +34,20 @@ pub extern "C" fn call() {
     let relay_contract_package: ContractPackageHash =
         runtime::get_named_arg(constants::KEY_RELAY_CONTRACT_PACKAGE);
     let mut named_keys = NamedKeys::new();
+    // Required named keys for CGS compatibility
     named_keys.insert(
-        constants::KEY_MESSAGE.to_string(),
-        storage::new_uref(String::new()).into(),
+        constants::KEY_INSTALLER.to_string(),
+        storage::new_uref(runtime::get_caller()).into(),
     );
     named_keys.insert(
         constants::KEY_RELAY_CONTRACT_PACKAGE.to_string(),
         storage::new_uref(relay_contract_package).into(),
+    );
+
+    // Named keys for the contract
+    named_keys.insert(
+        constants::KEY_MESSAGE.to_string(),
+        storage::new_uref(String::new()).into(),
     );
     named_keys.insert(
         constants::KEY_CALLER.to_string(),
