@@ -118,7 +118,7 @@ pub extern "C" fn call_on_behalf() {
                 runtime_args! {
                     constants::ARG_OWNER => Key::from(owner),
                     constants::ARG_RECIPIENT => Key::from(paymaster),
-                    constants::ARG_AMOUNT => gas_amount,
+                    constants::ARG_AMOUNT => gas_amount + fee,
                 },
             );
         }
