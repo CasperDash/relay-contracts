@@ -92,7 +92,7 @@ pub extern "C" fn call_on_behalf() {
     let fee = gas_amount
         .checked_mul(U512::from(fee_rate))
         .unwrap_or_revert()
-        .checked_div(U512::from(1000))
+        .checked_div(U512::from(10000))
         .unwrap_or_revert();
 
     match cep18_hash {
