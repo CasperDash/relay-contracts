@@ -358,10 +358,7 @@ fn load_entry_points(entry_points: &mut EntryPoints) {
 
     entry_points.add_entry_point(EntryPoint::new(
         constants::ENTRY_POINT_DEPOSIT,
-        vec![
-            Parameter::new(constants::ARG_OWNER, AccountHash::cl_type()),
-            Parameter::new(constants::ARG_AMOUNT, U512::cl_type()),
-        ],
+        vec![Parameter::new(constants::ARG_OWNER, AccountHash::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
