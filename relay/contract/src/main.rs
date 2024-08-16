@@ -219,7 +219,10 @@ pub extern "C" fn get_purse() {
 pub extern "C" fn set_fee_rate() {
     permission::require(Permission::Installer);
 
-    let fee_rate: u32 = runtime::get_named_arg(constants::ARG_FEE_RATE);
+    let fee_rate: u32 = runtime::get_named_arg(constants::ARG_FEE_RATE); // Percentage with 2 decimals, 333 = 3.33%
+    if fee_rate > 10000 {
+        runtime::revert(ApiError::from(Error::InvalidFeeRate))
+    }
     utils::write_storage(constants::KEY_FEE_RATE, fee_rate)
 }
 

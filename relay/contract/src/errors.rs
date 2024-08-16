@@ -7,6 +7,7 @@ pub enum Error {
     Unregistered = 2,
     InsufficientBalance = 3,
     InsufficientAmount = 4,
+    InvalidFeeRate = 5,
 }
 
 impl From<Error> for ApiError {
