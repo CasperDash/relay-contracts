@@ -393,7 +393,7 @@ fn load_entry_points(entry_points: &mut EntryPoints) {
 
     entry_points.add_entry_point(EntryPoint::new(
         constants::ENTRY_POINT_SET_FEE_RATE,
-        vec![Parameter::new(constants::ARG_FEE_RATE, CLType::U512)],
+        vec![Parameter::new(constants::ARG_FEE_RATE, CLType::U32)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
