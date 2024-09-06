@@ -92,7 +92,7 @@ pub extern "C" fn call_on_behalf() {
     let fee = gas_amount
         .checked_mul(U512::from(fee_rate))
         .unwrap_or_revert()
-        .checked_div(U512::from(1000))
+        .checked_div(U512::from(10000))
         .unwrap_or_revert();
 
     match cep18_hash {
@@ -118,7 +118,7 @@ pub extern "C" fn call_on_behalf() {
                 runtime_args! {
                     constants::ARG_OWNER => Key::from(owner),
                     constants::ARG_RECIPIENT => Key::from(paymaster),
-                    constants::ARG_AMOUNT => gas_amount,
+                    constants::ARG_AMOUNT => gas_amount + fee,
                 },
             );
         }
@@ -219,7 +219,10 @@ pub extern "C" fn get_purse() {
 pub extern "C" fn set_fee_rate() {
     permission::require(Permission::Installer);
 
-    let fee_rate: u32 = runtime::get_named_arg(constants::ARG_FEE_RATE);
+    let fee_rate: u32 = runtime::get_named_arg(constants::ARG_FEE_RATE); // Percentage with 2 decimals, 333 = 3.33%
+    if fee_rate > 10000 {
+        runtime::revert(ApiError::from(Error::InvalidFeeRate))
+    }
     utils::write_storage(constants::KEY_FEE_RATE, fee_rate)
 }
 
@@ -355,10 +358,7 @@ fn load_entry_points(entry_points: &mut EntryPoints) {
 
     entry_points.add_entry_point(EntryPoint::new(
         constants::ENTRY_POINT_DEPOSIT,
-        vec![
-            Parameter::new(constants::ARG_OWNER, AccountHash::cl_type()),
-            Parameter::new(constants::ARG_AMOUNT, U512::cl_type()),
-        ],
+        vec![Parameter::new(constants::ARG_OWNER, AccountHash::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -393,7 +393,7 @@ fn load_entry_points(entry_points: &mut EntryPoints) {
 
     entry_points.add_entry_point(EntryPoint::new(
         constants::ENTRY_POINT_SET_FEE_RATE,
-        vec![Parameter::new(constants::ARG_FEE_RATE, CLType::U512)],
+        vec![Parameter::new(constants::ARG_FEE_RATE, CLType::U32)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
